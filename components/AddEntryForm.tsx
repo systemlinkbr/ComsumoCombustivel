@@ -5,9 +5,10 @@ import { Save, AlertCircle } from 'lucide-react';
 interface AddEntryFormProps {
   onSave: (entry: Omit<FuelEntry, 'id'>) => void;
   lastOdometer: number;
+  initialData?: FuelEntry | null; // Added for editing
 }
 
-export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer }) => {
+export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer, initialData }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState<string>('');
   const [price, setPrice] = useState<string>('');
@@ -15,10 +16,25 @@ export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer
   const [total, setTotal] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-calculation Logic
-  // We use flags to avoid circular dependency loops if we were using useEffects blindly.
-  // Instead, we calculate on change.
+  // Load initial data if editing
+  useEffect(() => {
+    if (initialData) {
+      setDate(initialData.date);
+      setOdometer(initialData.odometer.toString());
+      setPrice(initialData.pricePerLiter.toString());
+      setLiters(initialData.liters.toString());
+      setTotal(initialData.totalCost.toString());
+    } else {
+      // Reset defaults if no initialData (switching from edit to add)
+      setDate(new Date().toISOString().split('T')[0]);
+      setOdometer('');
+      setPrice('');
+      setLiters('');
+      setTotal('');
+    }
+  }, [initialData]);
 
+  // Auto-calculation Logic
   const handlePriceChange = (val: string) => {
     setPrice(val);
     const p = parseFloat(val);
@@ -62,7 +78,9 @@ export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer
       return;
     }
 
-    if (lastOdometer > 0 && odoVal <= lastOdometer) {
+    // Only validate odometer if NOT editing (or check logic could be more complex for edits)
+    // If we are editing, we trust the user knows what they are doing, or we'd need to check against the specific previous entry, not the global max.
+    if (!initialData && lastOdometer > 0 && odoVal <= lastOdometer) {
       setError(`O hodômetro deve ser maior que o anterior (${lastOdometer} km).`);
       return;
     }
@@ -76,11 +94,15 @@ export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer
     });
   };
 
+  const isEditing = !!initialData;
+
   return (
     <div className="pb-24 animate-in slide-in-from-bottom-4 duration-500">
       <header className="px-1 mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Novo Abastecimento</h1>
-        <p className="text-slate-500 text-sm">Registre os detalhes do abastecimento</p>
+        <h1 className="text-2xl font-bold text-slate-900">{isEditing ? 'Editar Abastecimento' : 'Novo Abastecimento'}</h1>
+        <p className="text-slate-500 text-sm">
+          {isEditing ? 'Corrija as informações abaixo' : 'Registre os detalhes do abastecimento'}
+        </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -109,7 +131,7 @@ export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-slate-900"
             required
           />
-          {lastOdometer > 0 && (
+          {!isEditing && lastOdometer > 0 && (
             <p className="text-xs text-slate-400">Último registro: {lastOdometer} km</p>
           )}
         </div>
@@ -176,7 +198,7 @@ export const AddEntryForm: React.FC<AddEntryFormProps> = ({ onSave, lastOdometer
           className="w-full bg-brand-900 text-white font-semibold py-4 rounded-xl shadow-lg shadow-brand-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
         >
           <Save className="w-5 h-5" />
-          Salvar Abastecimento
+          {isEditing ? 'Atualizar Abastecimento' : 'Salvar Abastecimento'}
         </button>
       </form>
     </div>

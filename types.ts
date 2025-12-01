@@ -21,4 +21,4 @@ export interface DashboardStats {
   totalDistance: number;
 }
 
-export type ViewState = 'dashboard' | 'add' | 'history';
+export type ViewState = 'dashboard' | 'add' | 'history' | 'edit';

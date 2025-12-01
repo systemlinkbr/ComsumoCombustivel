@@ -1,13 +1,14 @@
 import React from 'react';
 import { FuelEntry } from '../types';
 import { computeEntries, formatCurrency, formatDate, formatNumber } from '../utils';
-import { Droplet, MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { Droplet, MapPin, Calendar, TrendingUp, Edit2 } from 'lucide-react';
 
 interface HistoryListProps {
   entries: FuelEntry[];
+  onEdit: (entry: FuelEntry) => void;
 }
 
-export const HistoryList: React.FC<HistoryListProps> = ({ entries }) => {
+export const HistoryList: React.FC<HistoryListProps> = ({ entries, onEdit }) => {
   const computed = computeEntries(entries);
 
   if (computed.length === 0) {
@@ -35,8 +36,17 @@ export const HistoryList: React.FC<HistoryListProps> = ({ entries }) => {
             {/* Timeline Dot */}
             <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${index === 0 ? 'bg-brand-500' : 'bg-slate-300'}`} />
             
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 relative group">
+              {/* Edit Button */}
+              <button 
+                onClick={() => onEdit(entry)}
+                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-brand-600 hover:bg-brand-50 rounded-full transition-colors"
+                aria-label="Editar"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+
+              <div className="flex justify-between items-start mb-3 pr-8">
                 <div className="flex items-center gap-2 text-slate-500 text-sm">
                   <Calendar className="w-4 h-4" />
                   <span>{formatDate(entry.date)}</span>
