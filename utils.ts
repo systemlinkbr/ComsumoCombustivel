@@ -41,8 +41,6 @@ export const computeEntries = (entries: FuelEntry[]): ComputedEntry[] => {
 
     const distance = entry.odometer - previousEntry.odometer;
     // Efficiency calculation: distance traveled since last fill / liters put in NOW.
-    // NOTE: This assumes a full tank strategy generally, or strictly following the prompt's logic:
-    // "Divide distance traveled by 'Quantity in Liters' of current refueling"
     const efficiency = distance > 0 ? distance / entry.liters : 0;
 
     return {
@@ -105,8 +103,14 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
   const currentYear = now.getFullYear();
 
   const thisMonthEntries = computed.filter(e => {
-    const d = new Date(e.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    // Note: 'date' in FuelEntry is YYYY-MM-DD string
+    // When parsing with new Date(), if it's just a date string, it might be treated as UTC.
+    // However, since we create it with new Date().toISOString() split T, it represents the day.
+    // For simplicity in monthly calc, we use local parts.
+    const parts = e.date.split('-');
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1; // 0-indexed
+    return month === currentMonth && year === currentYear;
   });
 
   const currentMonthCost = thisMonthEntries.reduce((acc, curr) => acc + curr.totalCost, 0);

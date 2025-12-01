@@ -64,16 +64,26 @@ const SecondaryCard: React.FC<{
 export const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
   // Date Helpers
   const today = new Date();
-  const formattedDate = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  
+  // Format: "Segunda-feira, 26 de outubro"
+  const formattedFullDate = today.toLocaleDateString('pt-BR', { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long' 
+  });
+  
+  // Capitalize first letter of the date string
+  const formattedFullDateCapitalized = formattedFullDate.charAt(0).toUpperCase() + formattedFullDate.slice(1);
+
   const currentMonth = today.toLocaleString('pt-BR', { month: 'long' });
-  // Capitalize first letter
+  // Capitalize first letter of month
   const currentMonthCapitalized = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1);
 
   return (
     <div className="space-y-6 pb-24 animate-in fade-in duration-500">
       <header className="px-1 space-y-1">
         <span className="text-xs font-medium text-brand-600 uppercase tracking-wide bg-brand-50 px-2 py-1 rounded-md">
-          {formattedDate}
+          {formattedFullDateCapitalized}
         </span>
         <div className="pt-2">
           <h1 className="text-2xl font-bold text-slate-900">Resumo</h1>
