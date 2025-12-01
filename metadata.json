@@ -1,0 +1,5 @@
+{
+  "name": "GasTrack",
+  "description": "A modern, minimalist fuel tracking application designed exclusively for gasoline vehicles to monitor consumption, costs, and autonomy.",
+  "requestFramePermissions": []
+}
