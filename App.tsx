@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FuelEntry, ViewState } from './types';
-import { calculateStats } from './utils';
+import { calculateStats, generateId } from './utils';
 import { Dashboard } from './components/Dashboard';
 import { AddEntryForm } from './components/AddEntryForm';
 import { HistoryList } from './components/HistoryList';
-import { LayoutGrid, Plus, History } from 'lucide-react';
+import { LayoutGrid, Plus, History, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [entries, setEntries] = useState<FuelEntry[]>([]);
   const [view, setView] = useState<ViewState>('dashboard');
   const [toast, setToast] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<FuelEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
   // Load from LocalStorage
   useEffect(() => {
     const saved = localStorage.getItem('gastrack-entries');
     if (saved) {
       try {
-        setEntries(JSON.parse(saved));
+        const parsedData = JSON.parse(saved);
+        // Patch existing entries that might be missing IDs (legacy data support)
+        const patchedData = parsedData.map((e: any) => ({
+          ...e,
+          id: e.id || generateId()
+        }));
+        setEntries(patchedData);
       } catch (e) {
         console.error("Failed to parse entries", e);
       }
@@ -47,7 +54,7 @@ const App: React.FC = () => {
       // Creating new entry
       const entry: FuelEntry = {
         ...newEntry,
-        id: crypto.randomUUID(),
+        id: generateId(),
       };
       // Prepend (or resort)
       const updated = [entry, ...entries].sort((a, b) => b.odometer - a.odometer);
@@ -56,6 +63,28 @@ const App: React.FC = () => {
     }
     
     setView('history');
+  };
+
+  const handleDeleteRequest = (id: string) => {
+    setEntryToDelete(id);
+  };
+
+  const confirmDelete = () => {
+    if (!entryToDelete) return;
+
+    // Use String() comparison to be safe against any legacy data type mismatches
+    setEntries(prevEntries => prevEntries.filter(e => String(e.id) !== String(entryToDelete)));
+    
+    // If we are currently editing the entry being deleted, clear the edit state
+    if (editingEntry && String(editingEntry.id) === String(entryToDelete)) {
+      setEditingEntry(null);
+      if (view === 'edit') {
+          setView('history');
+      }
+    }
+
+    showToast('Registro excluído com sucesso.');
+    setEntryToDelete(null);
   };
 
   const handleEditClick = (entry: FuelEntry) => {
@@ -83,7 +112,7 @@ const App: React.FC = () => {
           {view === 'dashboard' && <Dashboard stats={stats} />}
           {view === 'add' && <AddEntryForm onSave={handleSaveEntry} lastOdometer={lastOdometer} />}
           {view === 'edit' && <AddEntryForm onSave={handleSaveEntry} lastOdometer={lastOdometer} initialData={editingEntry} key="edit-form" />}
-          {view === 'history' && <HistoryList entries={entries} onEdit={handleEditClick} />}
+          {view === 'history' && <HistoryList entries={entries} onEdit={handleEditClick} onDelete={handleDeleteRequest} />}
         </main>
 
         {/* Bottom Navigation */}
@@ -117,6 +146,37 @@ const App: React.FC = () => {
         {toast && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl text-sm font-medium animate-in fade-in slide-in-from-top-4 z-[60]">
             {toast}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {entryToDelete && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-6 animate-in zoom-in-95 duration-200 scale-100">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Excluir registro?</h3>
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                  Tem certeza que deseja remover este abastecimento? Esta ação não pode ser desfeita.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setEntryToDelete(null)}
+                    className="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 shadow-lg shadow-red-200 transition-colors text-sm"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

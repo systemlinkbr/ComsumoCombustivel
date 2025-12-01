@@ -19,6 +19,9 @@ export interface DashboardStats {
   currentMonthCost: number;
   currentMonthDistance: number;
   totalDistance: number;
+  chartData: { date: string; value: number }[];
+  costPerKmTotal: number;
+  costPerKmMonth: number;
 }
 
 export type ViewState = 'dashboard' | 'add' | 'history' | 'edit';

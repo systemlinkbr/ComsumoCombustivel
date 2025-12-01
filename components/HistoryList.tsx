@@ -1,14 +1,15 @@
 import React from 'react';
 import { FuelEntry } from '../types';
 import { computeEntries, formatCurrency, formatDate, formatNumber } from '../utils';
-import { Droplet, MapPin, Calendar, TrendingUp, Edit2 } from 'lucide-react';
+import { Droplet, Edit2, Trash2 } from 'lucide-react';
 
 interface HistoryListProps {
   entries: FuelEntry[];
   onEdit: (entry: FuelEntry) => void;
+  onDelete: (id: string) => void;
 }
 
-export const HistoryList: React.FC<HistoryListProps> = ({ entries, onEdit }) => {
+export const HistoryList: React.FC<HistoryListProps> = ({ entries, onEdit, onDelete }) => {
   const computed = computeEntries(entries);
 
   if (computed.length === 0) {
@@ -24,66 +25,71 @@ export const HistoryList: React.FC<HistoryListProps> = ({ entries, onEdit }) => 
   }
 
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-500">
-      <header className="px-1">
+    <div className="space-y-4 pb-24 animate-in fade-in duration-500">
+      <header className="px-1 mb-4">
         <h1 className="text-2xl font-bold text-slate-900">Histórico</h1>
-        <p className="text-slate-500 text-sm">Linha do tempo dos seus abastecimentos</p>
       </header>
 
-      <div className="relative border-l-2 border-slate-100 ml-4 space-y-8">
-        {computed.map((entry, index) => (
-          <div key={entry.id} className="relative pl-6">
-            {/* Timeline Dot */}
-            <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${index === 0 ? 'bg-brand-500' : 'bg-slate-300'}`} />
+      <div className="space-y-3">
+        {computed.map((entry) => (
+          <div key={entry.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-3 transition-all hover:shadow-md">
             
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 relative group">
-              {/* Edit Button */}
-              <button 
-                onClick={() => onEdit(entry)}
-                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-brand-600 hover:bg-brand-50 rounded-full transition-colors"
-                aria-label="Editar"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-
-              <div className="flex justify-between items-start mb-3 pr-8">
-                <div className="flex items-center gap-2 text-slate-500 text-sm">
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(entry.date)}</span>
-                </div>
-                <div className="font-bold text-brand-900">
-                  {formatCurrency(entry.totalCost)}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-end">
-                <div>
-                  <div className="flex items-center gap-1 text-slate-400 text-xs uppercase tracking-wide mb-1">
-                    <MapPin className="w-3 h-3" />
-                    Distância
-                  </div>
-                  <div className="font-semibold text-slate-700">
-                    {entry.distance > 0 ? `+${formatNumber(entry.distance, 1)} km` : '-'}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-1 text-slate-400 text-xs uppercase tracking-wide mb-1">
-                    <TrendingUp className="w-3 h-3" />
-                    Eficiência
-                  </div>
-                  <div className={`font-bold text-lg ${entry.efficiency ? 'text-slate-900' : 'text-slate-300'}`}>
-                    {entry.efficiency ? `${formatNumber(entry.efficiency)} Km/L` : '---'}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-3 pt-3 border-t border-slate-50 flex gap-4 text-xs text-slate-400">
-                 <span>{entry.liters} L</span>
-                 <span>{formatCurrency(entry.pricePerLiter)}/L</span>
-                 <span>Odo: {entry.odometer}</span>
+            {/* Top Row: Date & Actions */}
+            <div className="flex justify-between items-center pb-2 border-b border-slate-50">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                {formatDate(entry.date)}
+              </span>
+              <div className="flex gap-1">
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onEdit(entry);
+                  }}
+                  className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                  aria-label="Editar"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(entry.id);
+                  }}
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
+                  aria-label="Excluir"
+                >
+                  <Trash2 className="w-4 h-4 group-hover:stroke-2" />
+                </button>
               </div>
             </div>
+
+            {/* Middle Row: Main Stats */}
+            <div className="flex justify-between items-end">
+              <div>
+                <div className="text-xl font-bold text-slate-900">
+                  {formatCurrency(entry.totalCost)}
+                </div>
+                <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                  <span>{entry.liters} L</span>
+                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                  <span>{formatCurrency(entry.pricePerLiter)}/L</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className={`font-bold text-base px-2 py-1 rounded-lg inline-block ${entry.efficiency ? 'bg-brand-50 text-brand-700' : 'bg-slate-50 text-slate-400'}`}>
+                  {entry.efficiency ? `${formatNumber(entry.efficiency)} Km/L` : '-'}
+                </div>
+                <div className="text-xs text-slate-400 mt-1">
+                  {entry.distance > 0 ? `+${formatNumber(entry.distance, 0)} km` : 'Ponto Inicial'}
+                </div>
+              </div>
+            </div>
+
           </div>
         ))}
       </div>

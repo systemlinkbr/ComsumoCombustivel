@@ -1,5 +1,13 @@
 import { FuelEntry, ComputedEntry, DashboardStats } from './types';
 
+export const generateId = (): string => {
+  // Fallback for environments where crypto.randomUUID is not available (e.g. non-secure contexts)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+};
+
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -60,6 +68,9 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
       currentMonthCost: 0,
       currentMonthDistance: 0,
       totalDistance: 0,
+      chartData: [],
+      costPerKmTotal: 0,
+      costPerKmMonth: 0,
     };
   }
 
@@ -75,7 +86,7 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
     : 0;
 
   // Average Efficiency (Weighted Average)
-  const validIntervals = computed.filter(c => c.efficiency !== null);
+  const validIntervals = computed.filter(c => c.efficiency !== null && c.efficiency > 0);
   const totalIntervalDistance = validIntervals.reduce((acc, curr) => acc + curr.distance, 0);
   const totalIntervalLiters = validIntervals.reduce((acc, curr) => acc + curr.liters, 0);
   
@@ -97,6 +108,14 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
     }
   }
 
+  // Chart Data: Sort chronologically (Oldest -> Newest)
+  const chartData = [...validIntervals]
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map(e => ({
+      date: formatDate(e.date).slice(0, 5), // DD/MM
+      value: e.efficiency || 0
+    }));
+
   // Month Stats
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -104,9 +123,6 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
 
   const thisMonthEntries = computed.filter(e => {
     // Note: 'date' in FuelEntry is YYYY-MM-DD string
-    // When parsing with new Date(), if it's just a date string, it might be treated as UTC.
-    // However, since we create it with new Date().toISOString() split T, it represents the day.
-    // For simplicity in monthly calc, we use local parts.
     const parts = e.date.split('-');
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]) - 1; // 0-indexed
@@ -116,6 +132,10 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
   const currentMonthCost = thisMonthEntries.reduce((acc, curr) => acc + curr.totalCost, 0);
   const currentMonthDistance = thisMonthEntries.reduce((acc, curr) => acc + curr.distance, 0);
 
+  // Cost per Km Stats
+  const costPerKmTotal = totalDistance > 0 ? totalCost / totalDistance : 0;
+  const costPerKmMonth = currentMonthDistance > 0 ? currentMonthCost / currentMonthDistance : 0;
+
   return {
     averageEfficiency,
     bestEfficiency,
@@ -123,5 +143,8 @@ export const calculateStats = (entries: FuelEntry[]): DashboardStats => {
     currentMonthCost,
     currentMonthDistance,
     totalDistance,
+    chartData,
+    costPerKmTotal,
+    costPerKmMonth,
   };
 };

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { DashboardStats } from '../types';
 import { formatCurrency, formatNumber, formatDate } from '../utils';
-import { TrendingUp, DollarSign, Calendar, MapPin, Gauge, Trophy, ArrowRight } from 'lucide-react';
+import { TrendingUp, DollarSign, Calendar, MapPin, Gauge, Trophy, LineChart, Coins } from 'lucide-react';
 
 interface DashboardProps {
   stats: DashboardStats;
@@ -53,6 +53,128 @@ const BestRecordCard: React.FC<{
     <div className="text-right">
       <span className="text-xl font-bold text-amber-900">{value}</span>
       <span className="text-xs text-amber-700 ml-1">Km/L</span>
+    </div>
+  </div>
+);
+
+const EfficiencyChart: React.FC<{ data: { date: string; value: number }[] }> = ({ data }) => {
+  // Config
+  const height = 120;
+  const width = 300; // viewBox width
+  const padding = 15;
+
+  const points = useMemo(() => {
+    if (data.length < 2) return null;
+
+    const maxVal = Math.max(...data.map(d => d.value)) * 1.1; // 10% headroom
+    const minVal = Math.max(0, Math.min(...data.map(d => d.value)) * 0.9);
+    const range = maxVal - minVal;
+
+    return data.map((d, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - padding * 2);
+      // Invert Y because SVG 0 is top
+      const y = height - padding - ((d.value - minVal) / (range || 1)) * (height - padding * 2);
+      return { x, y, value: d.value, date: d.date };
+    });
+  }, [data]);
+
+  if (!points) {
+    return (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center h-48 text-slate-400">
+        <LineChart className="w-8 h-8 mb-2 opacity-50" />
+        <p className="text-sm">Dados insuficientes para gráfico</p>
+      </div>
+    );
+  }
+
+  // Create path string
+  const pathData = points.map((p, i) => (i === 0 ? `M ${p.x},${p.y}` : `L ${p.x},${p.y}`)).join(' ');
+  
+  // Create area polygon (close the loop at bottom)
+  const areaData = `${pathData} L ${points[points.length - 1].x},${height} L ${points[0].x},${height} Z`;
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-brand-600" />
+          <h3 className="text-sm font-semibold text-slate-500 uppercase">Evolução (Km/L)</h3>
+        </div>
+        <div className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-full">
+          Último: {formatNumber(points[points.length - 1].value)}
+        </div>
+      </div>
+      
+      <div className="relative w-full aspect-[2.5/1]">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines (horizontal) */}
+          <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#f1f5f9" strokeDasharray="4" />
+          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#f1f5f9" />
+
+          {/* Area Fill */}
+          <path d={areaData} fill="url(#chartGradient)" />
+
+          {/* Line Stroke */}
+          <path d={pathData} fill="none" stroke="#0ea5e9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Data Points */}
+          {points.map((p, i) => (
+            <circle 
+              key={i} 
+              cx={p.x} 
+              cy={p.y} 
+              r="3" 
+              className="fill-white stroke-brand-500 stroke-2"
+            />
+          ))}
+          
+          {/* Axis Labels */}
+          {/* Min/Max Y */}
+          <text x={padding - 5} y={padding} textAnchor="end" dominantBaseline="middle" className="text-[8px] fill-slate-400 font-medium">
+            {formatNumber(Math.max(...data.map(d => d.value)), 1)}
+          </text>
+           <text x={padding - 5} y={height - padding} textAnchor="end" dominantBaseline="middle" className="text-[8px] fill-slate-400 font-medium">
+            {formatNumber(Math.min(...data.map(d => d.value)), 1)}
+          </text>
+
+          {/* Start/End X */}
+          <text x={points[0].x} y={height + 12} textAnchor="middle" className="text-[8px] fill-slate-400 font-medium">
+            {points[0].date}
+          </text>
+          <text x={points[points.length - 1].x} y={height + 12} textAnchor="middle" className="text-[8px] fill-slate-400 font-medium">
+            {points[points.length - 1].date}
+          </text>
+
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+const CostEfficiencyCard: React.FC<{
+  monthValue: number;
+  totalValue: number;
+}> = ({ monthValue, totalValue }) => (
+  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <Coins className="w-6 h-6" />
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Custo / Km (Mês)</p>
+        <p className="text-xl font-bold text-slate-900">{formatCurrency(monthValue)}</p>
+      </div>
+    </div>
+    <div className="text-right pl-4 border-l border-slate-100">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Média Geral</p>
+        <p className="text-sm font-bold text-slate-600">{formatCurrency(totalValue)}</p>
     </div>
   </div>
 );
@@ -142,11 +264,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
             date={formatDate(stats.bestEfficiency.date)}
           />
         )}
+
+        {/* Chart */}
+        {stats.chartData.length >= 2 && (
+          <EfficiencyChart data={stats.chartData} />
+        )}
+
+        {/* New Cost Efficiency Card */}
+        <CostEfficiencyCard monthValue={stats.costPerKmMonth} totalValue={stats.costPerKmTotal} />
       </section>
 
       {/* Monthly Grid */}
       <section>
-        <div className="flex items-center gap-2 mb-3 px-1">
+        <div className="flex items-center gap-2 mb-3 px-1 mt-2">
           <Calendar className="w-4 h-4 text-slate-400" />
           <h3 className="text-sm font-semibold text-slate-500 uppercase">Resumo de {currentMonthCapitalized}</h3>
         </div>
